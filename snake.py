@@ -1,5 +1,6 @@
 import pygame, sys, random, os
 from pygame.math import Vector2
+from typing import List
 
 pygame.init()
 
@@ -29,95 +30,109 @@ if os.path.exists("Graphics/eten"):
             food_surfaces.append(surface)
 
 class Food:
-    def __init__(self, snake_body):
-        self.food_surfaces = food_surfaces
-        self.respawn(snake_body) # Gebruik direct de nieuwe methode bij initialisatie
+    food_surfaces: List[pygame.Surface]
+    position: Vector2
+    food: pygame.Surface
 
-    def draw(self):
+    def __init__(self, snake_body: List[Vector2]) -> None:
+        self.food_surfaces = food_surfaces
+        self.respawn(snake_body) 
+        
+    def draw(self) -> None:
         food_rect = pygame.Rect(OFFSET + self.position.x * cell_size, OFFSET + self.position.y * cell_size, 
             cell_size, cell_size)
         screen.blit(self.food, food_rect)
 
-    def generate_random_cell(self):
+    def generate_random_cell(self) -> Vector2:
         x = random.randint(0, number_of_cells-1)
         y = random.randint(0, number_of_cells-1)
         return Vector2(x, y)
 
-    def generate_random_pos(self, snake_body):
+    def generate_random_pos(self, snake_body: List[Vector2]) -> Vector2:
         position = self.generate_random_cell()
         while position in snake_body:
             position = self.generate_random_cell()
         return position
 
-    # Nieuwe methode om zowel positie als texture te vernieuwen
-    def respawn(self, snake_body):
+    def respawn(self, snake_body: List[Vector2]) -> None:
         self.position = self.generate_random_pos(snake_body)
-        if self.food_surfaces: # Controleer of de lijst niet leeg is
+        if self.food_surfaces: 
             self.food = random.choice(self.food_surfaces)
 
 class Snake:
-    def __init__(self):
+    body: List[Vector2]
+    direction: Vector2
+    add_segment: bool
+    eat_sound: pygame.mixer.Sound
+    wall_hit_sound: pygame.mixer.Sound
+
+    def __init__(self) -> None:
         self.body = [Vector2(6, 9), Vector2(5,9), Vector2(4,9)]
         self.direction = Vector2(1, 0)
         self.add_segment = False
         self.eat_sound = pygame.mixer.Sound("Sounds/eat.mp3")
         self.wall_hit_sound = pygame.mixer.Sound("Sounds/wall.mp3")
 
-    def draw(self):
+    def draw(self) -> None:
         for segment in self.body:
             segment_rect = (OFFSET + segment.x * cell_size, OFFSET+ segment.y * cell_size, cell_size, cell_size)
             pygame.draw.rect(screen, WHITE, segment_rect, 0, 7)
 
-    def update(self):
+    def update(self) -> None:
         self.body.insert(0, self.body[0] + self.direction)
         if self.add_segment == True:
             self.add_segment = False
         else:
             self.body = self.body[:-1]
 
-    def reset(self):
+    def reset(self) -> None:
         self.body = [Vector2(6,9), Vector2(5,9), Vector2(4,9)]
         self.direction = Vector2(1, 0)
 
 class Game:
-    def __init__(self):
+    snake: Snake
+    food: Food
+    state: str
+    score: int
+
+    def __init__(self) -> None:
         self.snake = Snake()
         self.food = Food(self.snake.body)
         self.state = "RUNNING"
         self.score = 0
 
-    def draw(self):
+    def draw(self) -> None:
         self.food.draw()
         self.snake.draw()
 
-    def update(self):
+    def update(self) -> None:
         if self.state == "RUNNING":
             self.snake.update()
             self.check_collision_with_food()
             self.check_collision_with_edges()
             self.check_collision_with_tail()
 
-    def check_collision_with_food(self):
+    def check_collision_with_food(self) -> None:
         if self.snake.body[0] == self.food.position:
-            self.food.respawn(self.snake.body) # Aangepast: verandert nu ook de texture!
+            self.food.respawn(self.snake.body) 
             self.snake.add_segment = True
             self.score += 1
             self.snake.eat_sound.play()
 
-    def check_collision_with_edges(self):
+    def check_collision_with_edges(self) -> None:
         if self.snake.body[0].x == number_of_cells or self.snake.body[0].x == -1:
             self.game_over()
         if self.snake.body[0].y == number_of_cells or self.snake.body[0].y == -1:
             self.game_over()
 
-    def game_over(self):
+    def game_over(self) -> None:
         self.snake.reset()
-        self.food.respawn(self.snake.body) # Ook bij Game Over krijgt het eten een nieuwe plek + texture
+        self.food.respawn(self.snake.body) 
         self.state = "STOPPED"
         self.score = 0
         self.snake.wall_hit_sound.play()
 
-    def check_collision_with_tail(self):
+    def check_collision_with_tail(self) -> None:
         headless_body = self.snake.body[1:]
         if self.snake.body[0] in headless_body:
             self.game_over()
