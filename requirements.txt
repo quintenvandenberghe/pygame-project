@@ -1,0 +1,6 @@
+pygame
+sys
+random
+os
+math
+typing
